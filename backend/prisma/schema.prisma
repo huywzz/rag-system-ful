@@ -14,15 +14,15 @@ model User {
   id            String    @id
   name          String
   email         String    @unique
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean   @default(false) @map("email_verified")
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
   // admin plugin: "admin" | "editor" | "viewer"
   role          String?
   banned        Boolean?  @default(false)
-  banReason     String?
-  banExpires    DateTime?
+  banReason     String?   @map("ban_reason")
+  banExpires    DateTime? @map("ban_expires")
 
   sessions      Session[]
   accounts      Account[]
@@ -30,124 +30,126 @@ model User {
   approved      Document[]     @relation("approvedDocuments")
   conversations Conversation[]
 
-  @@map("user")
+  @@map("users")
 }
 
 model Session {
   id             String   @id
-  expiresAt      DateTime
+  expiresAt      DateTime @map("expires_at")
   token          String   @unique
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  ipAddress      String?
-  userAgent      String?
-  userId         String
-  impersonatedBy String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  userId         String   @map("user_id")
+  impersonatedBy String?  @map("impersonated_by")
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@map("session")
+  @@map("sessions")
 }
 
 model Account {
   id                    String    @id
-  accountId             String
-  providerId            String
-  userId                String
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
   scope                 String?
   password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   @@index([userId])
-  @@map("account")
+  @@map("accounts")
 }
 
 model Verification {
   id         String   @id
   identifier String
   value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@index([identifier])
-  @@map("verification")
+  @@map("verifications")
 }
 
 // ---------- App ----------
 
 enum DocumentStatus {
-  uploading      // presigned URL issued, waiting for the client PUT
-  parsing        // RAG service is extracting + chunking
+  uploading // presigned URL issued, waiting for the client PUT
+  parsing // RAG service is extracting + chunking
   pending_review // chunks ready; editor/admin may fix them, admin approves (reject = delete)
-  indexing       // approved, embedding into Qdrant
+  indexing // approved, embedding into Qdrant
   ready
-  failed         // parsing failed; retry re-parses
+  failed // parsing failed; retry re-parses
+
+  @@map("document_status")
 }
 
 model Document {
-  id           String         @id @default(uuid())
+  id           String          @id @default(uuid())
   name         String
-  key          String?        @unique // object key in storage; null for URL documents
+  key          String?         @unique // object key in storage; null for URL documents
   url          String?
   size         Int?
-  status       DocumentStatus @default(uploading)
+  status       DocumentStatus  @default(uploading)
   chunks       Int?
   error        String?
-  uploadedById String
-  uploadedBy   User           @relation(fields: [uploadedById], references: [id])
-  approvedById String?
-  approvedBy   User?          @relation("approvedDocuments", fields: [approvedById], references: [id])
-  approvedAt   DateTime?
+  uploadedById String          @map("uploaded_by_id")
+  uploadedBy   User            @relation(fields: [uploadedById], references: [id])
+  approvedById String?         @map("approved_by_id")
+  approvedBy   User?           @relation("approvedDocuments", fields: [approvedById], references: [id])
+  approvedAt   DateTime?       @map("approved_at")
   chunkList    DocumentChunk[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
 
-  @@map("document")
+  @@map("documents")
 }
 
 /// Parsed text awaiting review; exactly these rows get embedded on approve.
 model DocumentChunk {
   id         String   @id @default(uuid())
-  documentId String
+  documentId String   @map("document_id")
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   index      Int
   content    String
   edited     Boolean  @default(false)
 
   @@unique([documentId, index])
-  @@map("document_chunk")
+  @@map("document_chunks")
 }
 
 model Conversation {
   id        String    @id @default(uuid())
   title     String
-  userId    String
+  userId    String    @map("user_id")
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  Message[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@index([userId])
-  @@map("conversation")
+  @@map("conversations")
 }
 
 model Message {
   id             String       @id @default(uuid())
-  conversationId String
+  conversationId String       @map("conversation_id")
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           String // "user" | "assistant"
   content        String
   sources        String[]
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime     @default(now()) @map("created_at")
 
   @@index([conversationId, createdAt])
-  @@map("message")
+  @@map("messages")
 }
